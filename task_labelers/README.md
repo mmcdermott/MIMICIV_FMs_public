@@ -2,7 +2,7 @@
 
 ## Task Labelers in General
 
-Task labelers in the [Event Stream ML](https://github.com/mmcdermott/EventStreamML) codebase are used to
+Task labelers in the [Event Stream GPT](https://github.com/mmcdermott/EventStreamGPT) codebase are used to
 enable zero-shot evaluation of a generative foundation model. At a high level, the workflow works like this:
 
 1. Given an input and a (true) label for a downstream task, the zero-shot evaluator first generates $N$
