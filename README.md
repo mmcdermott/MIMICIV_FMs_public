@@ -1,7 +1,9 @@
 # MIMICIV Foundation Models
 
 A proof of concept repository demonstrating foundation models on MIMIC-IV Built using the
-[Event Stream GPT](https://github.com/mmcdermott/EventStreamGPT) library.
+[Event Stream GPT](https://github.com/mmcdermott/EventStreamGPT) library. See [this
+tutorial](https://eventstreamml.readthedocs.io/en/dev/MIMIC_IV_tutorial/index.html) in that repository for a
+walk through of the components of this repository!
 
 # Overview
 
@@ -102,7 +104,12 @@ You can use this
 to analyze your hyperparameter tuning sweep. Simply clone the report to your project, and adjust the filters
 in the various tabs of the run selector in the bottom to point to your sweep ID.
 
-### Evaluating On Zero-shot Performance
+## Fine-tuning Results
+You can also run sklearn baseline, from scratch supervised neural network training, or fine-tuning
+hyperparameter searches using the respective scripts and configs in the ESGPT library. See [this
+tutorial](https://eventstreamml.readthedocs.io/en/dev/MIMIC_IV_tutorial/index.html) for more details!
+
+## Evaluating On Zero-shot Performance
 
 To evaluate the pre-trained models on zero-shot, forecasting-based performance, you need to take several
 steps:
@@ -115,7 +122,3 @@ steps:
    `cp task_labelers/readmission.py $DATA_DIR/task_dfs/readmission_30d_all_labeler.py`
 3. You can then produce and run the zero-shot evaluation commands over your pre-trained model and tasks! To do
    so, simply use the `scripts/run_zero_shot_eval.sh` script.
-
-### Evaluating On Few-shot Transfer Learning Performance
-
-To do this, simply use the `scripts/run_FT_eval.sh` script.
