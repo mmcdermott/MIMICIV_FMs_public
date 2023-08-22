@@ -1,0 +1,224 @@
+defaults:
+  - dataset_base
+  - _self_
+
+connection_uri: "postgres://${oc.env:USER}:@localhost:5432/mimiciv"
+save_dir: "${oc.env:PROJECT_DATA_DIR}/${cohort_name}"
+subject_id_col: "subject_id"
+min_los: 3
+min_admissions: 1
+max_icd_seq_num: 4
+inputs:
+  patients:
+    query: |-
+      SELECT subject_id, gender, to_date((anchor_year-anchor_age)::CHAR(4), 'YYYY') AS year_of_birth
+      FROM mimiciv_hosp.patients
+      WHERE subject_id IN (
+        SELECT long_icu.subject_id FROM (
+          (
+            SELECT subject_id FROM mimiciv_icu.icustays WHERE los > ${min_los}
+          ) AS long_icu INNER JOIN (
+            SELECT subject_id
+            FROM mimiciv_hosp.admissions
+            GROUP BY subject_id
+            HAVING COUNT(*) > ${min_admissions}
+          ) AS many_admissions
+          ON long_icu.subject_id = many_admissions.subject_id
+        )
+      )
+    must_have: ["gender", "year_of_birth"]
+  death:
+    query: "SELECT subject_id, deathtime FROM mimiciv_hosp.admissions WHERE deathtime IS NOT NULL"
+    ts_col: "deathtime"
+  admissions:
+    query: "SELECT * FROM mimiciv_hosp.admissions"
+    start_ts_col: "admittime"
+    end_ts_col: "dischtime"
+    start_columns:
+      - "admission_type"
+      - "admission_location"
+      - "language"
+      - "race"
+      - "marital_status"
+      - "insurance"
+    end_columns: ["discharge_location"]
+    event_type: ["VISIT", "ADMISSION", "DISCHARGE"]
+  icu_stays:
+    query: "SELECT * FROM mimiciv_icu.icustays"
+    start_ts_col: "intime"
+    end_ts_col: "outtime"
+    start_columns: { "first_careunit": "careunit" }
+  diagnoses:
+    query: |-
+      SELECT
+        admissions.subject_id,
+        admissions.dischtime,
+        ('ICD' || diagnoses.icd_version || 'CM/' || TRIM(diagnoses.icd_code)) AS diagnosis,
+        diagnoses.seq_num
+      FROM (
+        mimiciv_hosp.diagnoses_icd AS diagnoses JOIN mimiciv_hosp.admissions AS admissions
+        ON admissions.hadm_id = diagnoses.hadm_id
+      )
+      WHERE diagnoses.seq_num <= ${max_icd_seq_num}
+    ts_col: "dischtime"
+  labs:
+    query:
+      - |-
+        SELECT
+          labevents.subject_id,
+          labevents.charttime,
+          (d_items.label || ' (' || labevents.valueuom || ')') AS lab,
+          labevents.valuenum,
+          CASE
+            WHEN labevents.valuenum IS NULL THEN labevents.value
+            ELSE NULL
+          END AS text_value,
+          labevents.valueuom,
+          labevents.ref_range_lower,
+          labevents.ref_range_upper,
+          labevents.priority,
+          labevents.flag
+        FROM (
+          mimiciv_hosp.labevents AS labevents
+          INNER JOIN
+          (SELECT itemid, label FROM mimiciv_icu.d_items) AS d_items
+          ON d_items.itemid = labevents.itemid
+        )
+      - |-
+        SELECT
+          chartevents.subject_id,
+          chartevents.charttime,
+          (d_items.label || ' (' || chartevents.valueuom || ')') AS lab,
+          chartevents.valuenum,
+          CASE
+            WHEN chartevents.valuenum IS NULL THEN chartevents.value
+            ELSE NULL
+          END AS text_value,
+          chartevents.valueuom,
+          NULL AS ref_range_lower,
+          NULL AS ref_range_upper,
+          NULL AS priority,
+          NULL AS flag
+        FROM (
+          mimiciv_icu.chartevents AS chartevents
+          INNER JOIN
+          (SELECT itemid, label FROM mimiciv_icu.d_items) AS d_items
+          ON d_items.itemid = chartevents.itemid
+        )
+    ts_col: "charttime"
+  infusions:
+    query: |-
+      SELECT
+        icustays.subject_id,
+        inputevents_ditems.label AS infusion,
+        inputevents_ditems.totalamount,
+        inputevents_ditems.totalamountuom,
+        inputevents_ditems.patientweight,
+        inputevents_ditems.starttime,
+        inputevents_ditems.endtime,
+        inputevents_ditems.rate,
+        inputevents_ditems.rateuom
+      FROM (
+        mimiciv_icu.icustays AS icustays
+        INNER JOIN (
+          mimiciv_icu.inputevents AS inputevents INNER JOIN mimiciv_icu.d_items AS d_items
+          ON inputevents.itemid = d_items.itemid
+        ) AS inputevents_ditems
+        ON inputevents_ditems.stay_id = icustays.stay_id
+      )
+    start_ts_col: "starttime"
+    end_ts_col: "endtime"
+  procedures:
+    query: |-
+      SELECT
+        icustays.subject_id,
+        procedureevents_ditems.label AS procedure,
+        procedureevents_ditems.starttime,
+        procedureevents_ditems.endtime
+      FROM (
+        mimiciv_icu.icustays AS icustays
+        INNER JOIN (
+          mimiciv_icu.procedureevents AS procedureevents INNER JOIN mimiciv_icu.d_items AS d_items
+          ON procedureevents.itemid = d_items.itemid
+        ) AS procedureevents_ditems
+        ON procedureevents_ditems.stay_id = icustays.stay_id
+      )
+      WHERE procedureevents_ditems.ordercategorydescription IN ('Task', 'ContinuousProcess')
+    start_ts_col: "starttime"
+    end_ts_col: "endtime"
+  medications:
+    query: |-
+      SELECT
+        icustays.subject_id,
+        emar.charttime,
+        emar.medication,
+        emar.event_txt AS text_value
+      FROM (
+        mimiciv_icu.icustays AS icustays INNER JOIN mimiciv_hosp.emar AS emar
+        ON emar.hadm_id = icustays.hadm_id
+      )
+      WHERE icustays.intime <= emar.charttime AND emar.charttime <= icustays.outtime
+    ts_col: "charttime"
+
+measurements:
+  static:
+    single_label_classification:
+      patients: ["gender"]
+  functional_time_dependent:
+    age:
+      functor: AgeFunctor
+      necessary_static_measurements: { "year_of_birth": "timestamp" }
+      kwargs:
+        dob_col: "year_of_birth"
+    time_of_day:
+      functor: TimeOfDayFunctor
+  dynamic:
+    multi_label_classification:
+      admissions:
+        - "admission_type"
+        - "admission_location"
+        - "language"
+        - "race"
+        - "marital_status"
+        - "insurance"
+        - "discharge_location"
+      icu_stays: ["careunit"]
+      diagnoses: 
+        - name: "diagnosis"
+          modifiers:
+            - ["seq_num", "categorical"]
+      procedures: ["procedure"]
+      medications: 
+        - name: "medication"
+          modifiers:
+            - ["text_value", "categorical"]
+    multivariate_regression:
+      labs: 
+        - name: "lab"
+          values_column: "valuenum"
+          modifiers:
+            - ["text_value", "categorical"]
+            - ["valueuom", "categorical"]
+            - ["ref_range_lower", "float"]
+            - ["ref_range_upper", "float"]
+            - ["priority", "categorical"]
+            - ["flag", "categorical"]
+      infusions: 
+        - name: "infusion"
+          values_column: "totalamount"
+          modifiers:
+            - ["totalamountuom", "categorical"]
+            - ["rate", "float"]
+            - ["rateuom", "categorical"]
+    univariate_regression:
+      infusions: ["patientweight"]
+
+outlier_detector_config: null
+normalizer_config: null
+min_valid_vocab_element_observations: 25
+min_valid_column_observations: 50
+min_true_float_frequency: 0.1
+min_unique_numerical_observations: 25
+min_events_per_subject: 20
+agg_by_time_scale: null
+DL_chunk_size: 4000
