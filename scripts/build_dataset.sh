@@ -5,5 +5,5 @@ export $(cat .env | xargs)
 PYTHONPATH="$EVENT_STREAM_PATH:$PYTHONPATH" python \
   $EVENT_STREAM_PATH/scripts/build_dataset.py \
   --config-path=$(pwd)/configs \
-  --config-name=dataset \
+  --config-name=dataset_new_schema \
   "hydra.searchpath=[$EVENT_STREAM_PATH/configs]" "$@"
