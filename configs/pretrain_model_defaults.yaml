@@ -1,0 +1,100 @@
+defaults:
+  - pretrain_config
+  - _self_
+
+do_overwrite: false
+seed: 1
+config:
+  do_use_learnable_sinusoidal_ATE: false
+  do_split_embeddings: false
+  categorical_embedding_dim: null
+  numerical_embedding_dim: null
+  static_embedding_mode: sum_all
+  static_embedding_weight: 0.4658913021127141
+  dynamic_embedding_weight: 0.5
+  categorical_embedding_weight: 0.37169656174885946
+  numerical_embedding_weight: 0.5
+  do_normalize_by_measurement_index: false
+  structured_event_processing_mode: conditionally_independent
+  num_hidden_layers: 10
+  seq_attention_types:
+  - global
+  TTE_generation_layer_type: log_normal_mixture
+  TTE_lognormal_generation_num_components: 8
+  head_dim: 51
+  hidden_size: 306
+  num_attention_heads: 6
+  attention_dropout: 0.4484915746954195
+  input_dropout: 0.04818429764105059
+  resid_dropout: 0.2952291124202385
+  intermediate_size: 32
+optimization_config:
+  init_lr: 0.00017101465779352442
+  end_lr_frac_of_init_lr: 0.06891633643700211
+  max_epochs: 100
+  batch_size: 28
+  validation_batch_size: 8
+  lr_frac_warmup_steps: 0.00021842706367630968
+  lr_decay_power: 4.746187009266494
+  weight_decay: 0.16941762142513883
+  patience: 5
+  gradient_accumulation: null
+  num_dataloader_workers: 0
+data_config:
+  save_dir: ???
+  max_seq_len: 190
+  min_seq_len: 4
+  train_subset_size: FULL
+  train_subset_seed: null
+  task_df_name: null
+  do_include_subsequence_indices: false
+  do_include_subject_id: false
+  do_include_start_time_min: false
+pretraining_metrics_config:
+  n_auc_thresholds: 50
+  do_skip_all_metrics: false
+  do_validate_args: false
+  include_metrics:
+    TRAIN:
+      LOSS_PARTS: true
+final_validation_metrics_config:
+  n_auc_thresholds: 25
+  do_skip_all_metrics: false
+  do_validate_args: false
+  include_metrics:
+    TUNING:
+      LOSS_PARTS: true
+      TTE:
+        MSE: true
+        MSLE: true
+      CLASSIFICATION:
+        AUROC:
+        - WEIGHTED
+        ACCURACY: true
+      REGRESSION:
+        MSE: true
+    HELD_OUT:
+      LOSS_PARTS: true
+      TTE:
+        MSE: true
+        MSLE: true
+      CLASSIFICATION:
+        AUROC:
+        - WEIGHTED
+        ACCURACY: true
+      REGRESSION:
+        MSE: true
+trainer_config:
+  accelerator: auto
+  devices: auto
+  detect_anomaly: false
+  log_every_n_steps: 50
+experiment_dir: ???
+wandb_logger_kwargs:
+  name: ???
+  project: ??? 
+  team: null
+  log_model: false
+  do_log_graph: false
+num_dataloader_workers: 15
+do_final_validation_on_metrics: true
