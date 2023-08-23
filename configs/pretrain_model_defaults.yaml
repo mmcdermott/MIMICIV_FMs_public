@@ -31,6 +31,7 @@ config:
 optimization_config:
   init_lr: 0.00017101465779352442
   end_lr_frac_of_init_lr: 0.06891633643700211
+  end_lr: null
   max_epochs: 100
   batch_size: 28
   validation_batch_size: 8
@@ -39,7 +40,7 @@ optimization_config:
   weight_decay: 0.16941762142513883
   patience: 5
   gradient_accumulation: null
-  num_dataloader_workers: 0
+  num_dataloader_workers: 15
 data_config:
   save_dir: ???
   max_seq_len: 190
@@ -96,5 +97,4 @@ wandb_logger_kwargs:
   team: null
   log_model: false
   do_log_graph: false
-num_dataloader_workers: 15
 do_final_validation_on_metrics: true
