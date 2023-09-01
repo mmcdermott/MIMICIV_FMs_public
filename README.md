@@ -34,7 +34,7 @@ MIMIC-IV, including the following steps:
 ## Software
 
 1. Download [Event Stream GPT](https://github.com/mmcdermott/EventStreamGPT) into a directory on your machine.
-2. Install a conda environment according to ESML's instructions.
+2. Install a conda environment according to ESGPT's instructions.
 3. Clone this repository onto your machine.
 4. Copy [`.env.example`](.env.example) to a file named `.env` on your machine. Populate the environment
    variables therein for your specific system, as defined below:
