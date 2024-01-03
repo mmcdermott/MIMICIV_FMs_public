@@ -46,8 +46,6 @@ inputs:
     query: "SELECT * FROM mimiciv_icu.icustays"
     start_ts_col: "intime"
     end_ts_col: "outtime"
-    start_columns: { "first_careunit": "careunit" }
-    end_columns: { "last_careunit": "careunit" }
   diagnoses:
     query: |-
       SELECT
@@ -132,7 +130,7 @@ measurements:
         - "marital_status"
         - "insurance"
         - "discharge_location"
-      icu_stays: ["careunit"]
+      icu_stays: ["first_careunit", "last_careunit"]
       diagnoses: ["icd_code"]
       procedures: ["procedure_itemid"]
       medications: ["medication"]
